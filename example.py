@@ -8,6 +8,7 @@ import os
 import dlib
 from gaze_tracking.gaze_tracking import GazeTracking
 from gaze_tracking.mouth_tracking import MouthTracking
+from gaze_tracking.brow_tracker import BrowTracking
 
 face_detector = dlib.get_frontal_face_detector()  # mraison here's where the magic happens
 cwd = os.path.abspath(os.path.dirname(__file__))
@@ -16,6 +17,7 @@ predictor = dlib.shape_predictor(model_path)
 
 gaze = GazeTracking()
 mouth_track = MouthTracking()
+brow_tracker = BrowTracking()
 webcam = cv2.VideoCapture(0)
 
 while True:
@@ -34,6 +36,10 @@ while True:
 
     mouth_track.refresh(frame, landmarks)
     frame = mouth_track.annotated_frame(frame)
+
+    brow_tracker.refresh(frame, landmarks)
+    frame = brow_tracker.annotated_frame(frame)
+
     text = ""
 
     if gaze.is_blinking():
