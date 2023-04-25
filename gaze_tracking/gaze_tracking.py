@@ -4,6 +4,7 @@ import cv2
 import dlib
 from .eye import Eye
 from .calibration import Calibration
+from imutils import face_utils
 
 
 class GazeTracking(object):
@@ -18,14 +19,16 @@ class GazeTracking(object):
         self.eye_left = None
         self.eye_right = None
         self.calibration = Calibration()
+        self.face_shape = None
+        self._will_output = True
 
         # _face_detector is used to detect faces
-        self._face_detector = dlib.get_frontal_face_detector()
-
-        # _predictor is used to get facial landmarks of a given face
-        cwd = os.path.abspath(os.path.dirname(__file__))
-        model_path = os.path.abspath(os.path.join(cwd, "trained_models/shape_predictor_68_face_landmarks.dat"))
-        self._predictor = dlib.shape_predictor(model_path)
+        # self._face_detector = dlib.get_frontal_face_detector() # mraison here's where the magic happens
+        #
+        # # _predictor is used to get facial landmarks of a given face
+        # cwd = os.path.abspath(os.path.dirname(__file__))
+        # model_path = os.path.abspath(os.path.join(cwd, "trained_models/shape_predictor_68_face_landmarks.dat"))
+        # self._predictor = dlib.shape_predictor(model_path)
 
     @property
     def pupils_located(self):
@@ -39,28 +42,39 @@ class GazeTracking(object):
         except Exception:
             return False
 
-    def _analyze(self):
+    def _analyze(self, landmarks_fullface):
         """Detects the face and initialize Eye objects"""
+        if landmarks_fullface is None:
+            self.eye_left = None
+            self.eye_right = None
+            self.face_shape = None
+            return
+
         frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
-        faces = self._face_detector(frame)
+        # faces = self._face_detector(frame)
 
         try:
-            landmarks = self._predictor(frame, faces[0])
+            landmarks = landmarks_fullface
+            # landmarks = self._predictor(frame, faces[0])
+            if self._will_output:
+                print(landmarks)
             self.eye_left = Eye(frame, landmarks, 0, self.calibration)
             self.eye_right = Eye(frame, landmarks, 1, self.calibration)
+            self.face_shape = face_utils.shape_to_np(landmarks)
 
         except IndexError:
             self.eye_left = None
             self.eye_right = None
+            self.face_shape = None
 
-    def refresh(self, frame):
+    def refresh(self, frame, landmarks_fullface):
         """Refreshes the frame and analyzes it.
 
         Arguments:
             frame (numpy.ndarray): The frame to analyze
         """
         self.frame = frame
-        self._analyze()
+        self._analyze(landmarks_fullface)
 
     def pupil_left_coords(self):
         """Returns the coordinates of the left pupil"""
@@ -117,9 +131,20 @@ class GazeTracking(object):
             blinking_ratio = (self.eye_left.blinking + self.eye_right.blinking) / 2
             return blinking_ratio > 3.8
 
-    def annotated_frame(self):
+    def annotated_frame(self, frame):
         """Returns the main frame with pupils highlighted"""
-        frame = self.frame.copy()
+        # frame = self.frame.copy()
+
+        if self._will_output:
+            if self.face_shape is not None and self.face_shape.any() and self.pupils_located:
+                print(self.face_shape)
+                print(self.pupil_left_coords())
+                print(self.pupil_right_coords())
+                self._will_output = False
+
+        if self.face_shape is not None and self.face_shape.any():
+            for (x, y) in self.face_shape:
+                cv2.circle(frame, (x, y), 2, (0, 255, 0), -1)
 
         if self.pupils_located:
             color = (0, 255, 0)

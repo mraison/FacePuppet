@@ -4,19 +4,36 @@ Check the README.md for complete documentation.
 """
 
 import cv2
-from gaze_tracking import GazeTracking
+import os
+import dlib
+from gaze_tracking.gaze_tracking import GazeTracking
+from gaze_tracking.mouth_tracking import MouthTracking
+
+face_detector = dlib.get_frontal_face_detector()  # mraison here's where the magic happens
+cwd = os.path.abspath(os.path.dirname(__file__))
+model_path = os.path.abspath(os.path.join(cwd, "training_data_NEW/shape_predictor_68_face_landmarks.dat"))
+predictor = dlib.shape_predictor(model_path)
 
 gaze = GazeTracking()
+mouth_track = MouthTracking()
 webcam = cv2.VideoCapture(0)
 
 while True:
     # We get a new frame from the webcam
     _, frame = webcam.read()
 
-    # We send this frame to GazeTracking to analyze it
-    gaze.refresh(frame)
+    try:
+        faces = face_detector(frame)
+        landmarks = predictor(frame, faces[0])
+    except:
+        landmarks = None
 
-    frame = gaze.annotated_frame()
+    # We send this frame to GazeTracking to analyze it
+    gaze.refresh(frame, landmarks)
+    frame = gaze.annotated_frame(frame)
+
+    mouth_track.refresh(frame, landmarks)
+    frame = mouth_track.annotated_frame(frame)
     text = ""
 
     if gaze.is_blinking():
