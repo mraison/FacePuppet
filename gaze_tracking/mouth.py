@@ -14,25 +14,36 @@ class Mouth(object):
     BOTTOM_LIP_INNER_POINTS = [60, 67, 66, 65, 64]
     BOTTOM_LIP_OUTER_POINTS = [48, 59, 58, 57, 56, 55, 54]
 
-    def __init__(self, original_frame, landmarks):
-        self.frame = None
+    def __init__(self, landmarks):
         self.mouth_shape = None
-        self.landmark_points = None
+        self.landmark_points = landmarks
         self.mouth_center_location = None
 
-        self._analyze(original_frame, landmarks)
+    @property
+    def mouth_located(self):
+        """Check that the pupils have been located"""
+        try:
+            return len(self.mouth_center_location) == 2 and self.mouth_shape is not None
+        except Exception:
+            return False
 
     def is_closed(self):
-        threshold = 4
-        return self.mouth_shape and 0 < self.mouth_shape[1] <= threshold
+        if self.mouth_shape:
+            return self.mouth_shape[1] / self.mouth_shape[0] <= 0.05
+        else:
+            return True
 
     def is_half_open(self):
-        threshold = 12
-        return self.mouth_shape and 4 < self.mouth_shape[1] <= threshold
+        if self.mouth_shape:
+            return 0.05 < self.mouth_shape[1] / self.mouth_shape[0] < 0.2
+        else:
+            return False
 
     def is_full_open(self):
-        threshold = 20
-        return self.mouth_shape and 12 < self.mouth_shape[1] <= threshold
+        if self.mouth_shape:
+            return self.mouth_shape[1] / self.mouth_shape[0] >= 0.2
+        else:
+            return False
 
     @staticmethod
     def _middle_point(p1, p2):
@@ -56,16 +67,40 @@ class Mouth(object):
         av_top_lip = (np.mean(x_top_l), np.mean(y_top_l))
         av_bottom_lip = (np.mean(x_bottom_l), np.mean(y_bottom_l))
 
-        lip_gap_height = av_bottom_lip[1] - av_top_lip[1]
-        lip_gap_width = np.mean([(x_top_l[-1] - x_top_l[0]), (x_bottom_l[-1] - x_bottom_l[0])])
+        lip_gap_height = np.absolute(av_top_lip[1] - av_bottom_lip[1])
+        lip_gap_width = np.mean([np.absolute(x_top_l[-1] - x_top_l[0]), np.absolute(x_bottom_l[-1] - x_bottom_l[0])])
 
         self.mouth_center_location = self._middle_point(av_top_lip, av_bottom_lip)
 
         return (lip_gap_width, lip_gap_height)
 
-    def _analyze(self, original_frame, landmarks):
+    def analyze(self):
+        if self.landmark_points is None:
+            self.mouth_shape = None
+            self.mouth_center_location = None
+            return
+        self._analyze(self.landmark_points)
+
+    def _analyze(self, landmarks):
         self.mouth_shape = self._mouth_shape(
             landmarks,
             self.TOP_LIP_INNER_POINTS,
             self.BOTTOM_LIP_INNER_POINTS
         )
+
+    def annotated_frame(self, frame):
+        """Returns the main frame with pupils highlighted"""
+        # frame = self.frame.copy()
+
+        if self.mouth_located:
+            color = (0, 0, 255)
+            x_left, y_left = self.mouth_center_location
+            x_size, y_size = self.mouth_shape
+            cv2.rectangle(
+                frame,
+                (int(x_left-x_size/2), int(y_left-y_size/2)),
+                (int(x_left+x_size/2), int(y_left+y_size/2)),
+                color
+            )
+
+        return frame

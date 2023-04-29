@@ -18,9 +18,28 @@ class Eye(object):
         self.origin = None
         self.center = None
         self.pupil = None
-        self.landmark_points = None
 
-        self._analyze(original_frame, landmarks, side, calibration)
+        self.original_frame = original_frame
+        self.landmarks = landmarks
+        self.side = side
+        self.calibration = calibration
+
+    @property
+    def pupils_located(self):
+        """Check that the pupils have been located"""
+        try:
+            int(self.pupil.x)
+            int(self.pupil.y)
+            return True
+        except Exception:
+            return False
+
+    def pupil_coords(self):
+        """Returns the coordinates of the left pupil"""
+        if self.pupils_located:
+            x = self.origin[0] + self.pupil.x
+            y = self.origin[1] + self.pupil.y
+            return (x, y)
 
     @staticmethod
     def _middle_point(p1, p2):
@@ -44,7 +63,6 @@ class Eye(object):
         """
         region = np.array([(landmarks.part(point).x, landmarks.part(point).y) for point in points])
         region = region.astype(np.int32)
-        self.landmark_points = region
 
         # Applying a mask to get only the eye
         height, width = frame.shape[:2]
@@ -92,6 +110,20 @@ class Eye(object):
 
         return ratio
 
+    def is_blinking(self):
+        """Returns true if the user closes his eyes"""
+        if self.pupils_located:
+            return self.blinking > 3.8
+
+    def analyze(self):
+        if self.landmarks is None:
+            self.frame = None
+            self.origin = None
+            self.center = None
+            self.pupil = None
+            return
+        self._analyze(self.original_frame, self.landmarks, self.side, self.calibration)
+
     def _analyze(self, original_frame, landmarks, side, calibration):
         """Detects and isolates the eye in a new frame, sends data to the calibration
         and initializes Pupil object.
@@ -117,3 +149,13 @@ class Eye(object):
 
         threshold = calibration.threshold(side)
         self.pupil = Pupil(self.frame, threshold)
+
+    def annotated_frame(self, frame):
+        """Returns the main frame with pupils highlighted"""
+        if self.pupils_located:
+            color = (0, 255, 0)
+            x, y = self.pupil_coords()
+            cv2.line(frame, (x - 5, y), (x + 5, y), color)
+            cv2.line(frame, (x, y - 5), (x, y + 5), color)
+
+        return frame

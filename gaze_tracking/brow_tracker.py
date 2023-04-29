@@ -15,6 +15,21 @@ class BrowTracking(object):
         self.left_brow = None
         self.right_brow = None
 
+    def are_raised(self):
+        if self.left_brow and self.right_brow:
+            return self.left_brow.is_raised() and self.right_brow.is_raised()
+        return False
+
+    def are_neutral(self):
+        if self.left_brow and self.right_brow:
+            return self.left_brow.is_neutral() and self.right_brow.is_neutral()
+        return False
+
+    def are_furrowed(self):
+        if self.left_brow and self.right_brow:
+            return self.left_brow.is_furrowed() and self.right_brow.is_furrowed()
+        return False
+
     @property
     def brow_located(self):
         """Check that the pupils have been located"""
@@ -32,12 +47,13 @@ class BrowTracking(object):
         # frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         try:
             landmarks = landmarks_fullface
-            self.left_brow = EyeBrow(None, landmarks, 0)
-            self.right_brow = EyeBrow(None, landmarks, 1)
+            self.left_brow = EyeBrow(self.frame, landmarks, 0)
+            self.right_brow = EyeBrow(self.frame, landmarks, 1)
 
         except IndexError as e:
             print("ERROR: %s" % e)
-            self.mouth = None
+            self.left_brow = None
+            self.right_brow = None
 
     def refresh(self, frame, landmarks_fullface):
         """Refreshes the frame and analyzes it.

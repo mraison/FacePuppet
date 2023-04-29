@@ -20,7 +20,6 @@ class GazeTracking(object):
         self.eye_right = None
         self.calibration = Calibration()
         self.face_shape = None
-        self._will_output = True
 
         # _face_detector is used to detect faces
         # self._face_detector = dlib.get_frontal_face_detector() # mraison here's where the magic happens
@@ -50,16 +49,16 @@ class GazeTracking(object):
             self.face_shape = None
             return
 
-        frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+        # frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         # faces = self._face_detector(frame)
 
         try:
             landmarks = landmarks_fullface
             # landmarks = self._predictor(frame, faces[0])
-            if self._will_output:
-                print(landmarks)
             self.eye_left = Eye(frame, landmarks, 0, self.calibration)
+            self.eye_left.analyze()
             self.eye_right = Eye(frame, landmarks, 1, self.calibration)
+            self.eye_right.analyze()
             self.face_shape = face_utils.shape_to_np(landmarks)
 
         except IndexError:
@@ -134,14 +133,6 @@ class GazeTracking(object):
     def annotated_frame(self, frame):
         """Returns the main frame with pupils highlighted"""
         # frame = self.frame.copy()
-
-        if self._will_output:
-            if self.face_shape is not None and self.face_shape.any() and self.pupils_located:
-                print(self.face_shape)
-                print(self.pupil_left_coords())
-                print(self.pupil_right_coords())
-                self._will_output = False
-
         if self.face_shape is not None and self.face_shape.any():
             for (x, y) in self.face_shape:
                 cv2.circle(frame, (x, y), 2, (0, 255, 0), -1)

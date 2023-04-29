@@ -46,13 +46,19 @@ class MouthTracking(object):
         self._analyze(landmarks_fullface)
 
     def is_half_open(self):
+        if not self.mouth:
+            return False
         """Returns true if the user is looking to the right"""
         return self.mouth.is_half_open()
 
     def is_full_open(self):
+        if not self.mouth:
+            return False
         return self.mouth.is_full_open()
 
     def is_closed(self):
+        if not self.mouth:
+            return True
         return self.mouth.is_closed()
 
     def annotated_frame(self, frame):

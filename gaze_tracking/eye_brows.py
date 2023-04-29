@@ -13,43 +13,50 @@ class EyeBrow(object):
     LEFT_BROW_POINTS = [17, 18, 19, 20, 21]
     RIGHT_BROW_POINTS = [22, 23, 24, 25, 26]
 
-    def __init__(self, original_frame, landmarks, side):
-        self.frame = None
-        # self.brow_outside = None
-        # self.brow_inside = None
+    LEFT_TOP_EYELID = [37, 38]
+    RIGHT_TOP_EYELID = [44, 43]
+
+    BRIDGE_OF_NOSE = [27]
+
+    def __init__(self, landmarks, side):
+        self.distance_from_nose = None
         self.position = None
-        self.curve = None # options will be: upturn, downturn, neutral
 
-        self.landmark_points = None
+        self.landmarks = landmarks
+        self.side = side
 
-        self._analyze(original_frame, landmarks, side)
+    def is_raised(self):
+        if self.distance_from_nose:
+            return self.distance_from_nose > 35
+        return False
 
-    def _position(self, landmarks, points, side):
-        ### Take the center of the eyebrow to indicate the overall position.
-        #   Then determine the curve based on the two ends.
+    def is_neutral(self):
+        if self.distance_from_nose:
+            return 28 < self.distance_from_nose <= 35
+        return False
 
-        if side == 0: # left
-            outter_point = (landmarks.part(points[0]).x, landmarks.part(points[0]).y)
-            inner_point = (landmarks.part(points[-1]).x, landmarks.part(points[-1]).y)
-        elif side == 1: # right
-            outter_point = (landmarks.part(points[-1]).x, landmarks.part(points[-1]).y)
-            inner_point = (landmarks.part(points[0]).x, landmarks.part(points[0]).y)
+    def is_furrowed(self):
+        if self.distance_from_nose:
+            return self.distance_from_nose <= 28
+        return False
 
-        middle_point = (landmarks.part(points[2]).x, landmarks.part(points[2]).y)
+    def _position(self, landmarks, brow_points, nose_bridge):
+        middle_point = (landmarks.part(brow_points[2]).x, landmarks.part(brow_points[2]).y)
 
-        # Remember, images are indexed such that smaller y values are nearer to the top.
-        # ...I think.
-        threshold = 2
-        if inner_point[1] - outter_point[1] >= 2:
-            self.curve = 'down'
-        elif outter_point[1] - inner_point[1] >= 2:
-            self.curve = 'up'
-        else:
-            self.curve = 'na'
+        self.distance_from_nose = np.abs(
+            middle_point[1] - landmarks.part(nose_bridge[0]).y
+        )
 
         return middle_point
 
-    def _analyze(self, original_frame, landmarks, side):
+    def analyze(self):
+        if self.landmarks is None:
+            self.distance_from_nose = None
+            self.position = None
+            return
+        self._analyze(self.landmarks, self.side)
+
+    def _analyze(self, landmarks, side):
         """Detects and isolates the eye in a new frame, sends data to the calibration
         and initializes Pupil object.
 
@@ -61,10 +68,22 @@ class EyeBrow(object):
         """
         if side == 0:
             points = self.LEFT_BROW_POINTS
+            eyelid = self.LEFT_TOP_EYELID
         elif side == 1:
             points = self.RIGHT_BROW_POINTS
+            eyelid = self.RIGHT_TOP_EYELID
         else:
             return
 
-        self.position = self._position(landmarks, points, side)
+        self.position = self._position(landmarks, points, eyelid)
 
+    def annotated_frame(self, frame):
+        """Returns the main frame with pupils highlighted"""
+        # frame = self.frame.copy()
+
+        if self.position is not None:
+            color = (255, 0, 0)
+            point = self.position
+            cv2.line(frame, (point[0] - 10, point[1]), (point[0] + 10, point[1]), color)
+
+        return frame
