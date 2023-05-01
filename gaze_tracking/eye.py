@@ -13,7 +13,7 @@ class Eye(object):
     LEFT_EYE_POINTS = [36, 37, 38, 39, 40, 41]
     RIGHT_EYE_POINTS = [42, 43, 44, 45, 46, 47]
 
-    def __init__(self, original_frame, landmarks, side, calibration):
+    def __init__(self, original_frame, landmarks, side, calibration, vect_calc, dimension_calc):
         self.frame = None
         self.origin = None
         self.center = None
@@ -23,7 +23,11 @@ class Eye(object):
         self.landmarks = landmarks
         self.side = side
         self.calibration = calibration
+        self.vect_calc = vect_calc
+        self.dimension_calc = dimension_calc
 
+    def is_located(self):
+        return self.pupils_located
     @property
     def pupils_located(self):
         """Check that the pupils have been located"""
@@ -159,3 +163,20 @@ class Eye(object):
             cv2.line(frame, (x, y - 5), (x, y + 5), color)
 
         return frame
+
+    def draw_vect(self, frame):
+        if self.pupils_located:
+            point = self.pupil_coords()
+            start, end, dist = self.vect_calc.find_vector(point)
+
+            point_2d = self.dimension_calc.to_2d([start, end])
+            # point_2d = np.int32(point_2d.reshape(-1, 2))
+            frame = cv2.line(
+                frame,
+                tuple(point_2d[0]),
+                tuple(point_2d[1]),
+                (0, 255, 0), 2, cv2.LINE_AA
+            )
+
+        return frame
+

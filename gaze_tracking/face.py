@@ -4,8 +4,15 @@ from .eye import Eye
 from .calibration import Calibration
 from .eye_brows import EyeBrow
 from .mouth import Mouth
+from .utils.calculators import FeatureVectorFinder, ThreeDimensionalCalc
 from imutils import face_utils
 
+##################
+# https://stackoverflow.com/questions/12299870/computing-x-y-coordinate-3d-from-image-point
+
+# S . [] = CameraMatrix . (rotationMatrix . [] + tvec)
+# ^unknown
+##################
 
 ###############################
 # ripped from
@@ -16,6 +23,7 @@ from imutils import face_utils
 
 class CameraSpecs(object):
     def __init__(self, dimensions):
+        self.dimensions = dimensions
         focal_length = dimensions[1]
         center = (dimensions[1] / 2, dimensions[0] / 2)
         self.camera_matrix = np.array(
@@ -60,15 +68,10 @@ class Face(object):
         # Camera internals
         self.camera_specs = CameraSpecs(dimensions)
 
-        self.brows = (
-            EyeBrow(landmarks, 0),
-            EyeBrow(landmarks, 1)
-        )
-        self.eyes = (
-            Eye(self.greyframe, landmarks, 0, self.calibration),
-            Eye(self.greyframe, landmarks, 1, self.calibration)
-        )
-        self.mouth = Mouth(landmarks)
+        # features
+        self.brows = None
+        self.eyes = None
+        self.mouth = None
 
         self.landmarks = landmarks
 
@@ -76,6 +79,35 @@ class Face(object):
         # These will inform us how to adjust the analysis of all other parts of the face.
         self.rotational_vector = None
         self.translation_vector = None
+        self.vect_calc = None
+        self.dimension_calc = None
+
+    def all_located(self):
+        if (
+            self.brows is not None
+                and self.eyes is not None
+                and self.mouth is not None
+        ):
+            return (
+                self.brows[0].is_located()
+                and self.brows[1].is_located()
+                and self.eyes[0].is_located()
+                and self.eyes[1].is_located()
+                and self.mouth.is_located()
+            )
+        else:
+            return False
+
+    def load_features(self):
+        self.brows = (
+            EyeBrow(self.landmarks, 0, self.vect_calc, self.dimension_calc),
+            EyeBrow(self.landmarks, 1, self.vect_calc, self.dimension_calc)
+        )
+        self.eyes = (
+            Eye(self.greyframe, self.landmarks, 0, self.calibration, self.vect_calc, self.dimension_calc),
+            Eye(self.greyframe, self.landmarks, 1, self.calibration, self.vect_calc, self.dimension_calc)
+        )
+        self.mouth = Mouth(self.landmarks, self.vect_calc, self.dimension_calc)
 
     def is_detected(self):
         if self.rotational_vector is None or self.translation_vector is None:
@@ -87,9 +119,13 @@ class Face(object):
         if self.landmarks is None:
             self.rotational_vector = None
             self.translation_vector = None
+            self.dimension_calc = None
+            self.vect_calc = None
             return
 
         self._analyze()
+        self.load_features()
+        # now analyze each individual feature.
         self.brows[0].analyze()
         self.brows[1].analyze()
         self.eyes[0].analyze()
@@ -114,12 +150,22 @@ class Face(object):
         )
         self.rotational_vector = rotation_vector
         self.translation_vector = translation_vector
+        self.dimension_calc = ThreeDimensionalCalc(
+            self.rotational_vector,
+            self.translation_vector,
+            self.camera_specs.camera_matrix,
+            self.camera_specs.dimensions
+        )
+        self.vect_calc = FeatureVectorFinder(
+            self.landmarks,
+            self.dimension_calc
+        )
 
     def draw_annotation_box(
-            self,
-            image,
-            color=(0, 255, 0),
-            line_width=2
+        self,
+        image,
+        color=(0, 255, 0),
+        line_width=2
     ):
         if not self.is_detected():
             return image
@@ -180,3 +226,12 @@ class Face(object):
             return frame
         except:
             return frame
+
+    def draw_vecs(self, frame):
+        if self.all_located():
+            frame = self.brows[0].draw_vect(frame)
+            frame = self.brows[1].draw_vect(frame)
+            frame = self.eyes[0].draw_vect(frame)
+            frame = self.eyes[1].draw_vect(frame)
+            frame = self.mouth.draw_vect(frame)
+        return frame

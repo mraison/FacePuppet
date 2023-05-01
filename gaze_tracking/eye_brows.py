@@ -18,12 +18,17 @@ class EyeBrow(object):
 
     BRIDGE_OF_NOSE = [27]
 
-    def __init__(self, landmarks, side):
+    def __init__(self, landmarks, side, vect_calc, dimension_calc):
         self.distance_from_nose = None
         self.position = None
 
         self.landmarks = landmarks
         self.side = side
+        self.vect_calc = vect_calc
+        self.dimension_calc = dimension_calc
+
+    def is_located(self):
+        return self.position is not None
 
     def is_raised(self):
         if self.distance_from_nose:
@@ -85,5 +90,21 @@ class EyeBrow(object):
             color = (255, 0, 0)
             point = self.position
             cv2.line(frame, (point[0] - 10, point[1]), (point[0] + 10, point[1]), color)
+
+        return frame
+
+    def draw_vect(self, frame):
+        if self.position:
+            point = self.position
+            start, end, dist = self.vect_calc.find_vector(point)
+
+            point_2d = self.dimension_calc.to_2d([start, end])
+            # point_2d = np.int32(point_2d.reshape(-1, 2))
+            frame = cv2.line(
+                frame,
+                tuple(point_2d[0]),
+                tuple(point_2d[1]),
+                (0, 255, 0), 2, cv2.LINE_AA
+            )
 
         return frame

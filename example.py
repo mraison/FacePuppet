@@ -2,13 +2,9 @@
 Demonstration of the GazeTracking library.
 Check the README.md for complete documentation.
 """
-
 import cv2
 import os
 import dlib
-from gaze_tracking.gaze_tracking import GazeTracking
-from gaze_tracking.mouth_tracking import MouthTracking
-from gaze_tracking.brow_tracker import BrowTracking
 from gaze_tracking.face import Face
 import numpy as np
 
@@ -17,18 +13,11 @@ cwd = os.path.abspath(os.path.dirname(__file__))
 model_path = os.path.abspath(os.path.join(cwd, "training_data_NEW/shape_predictor_68_face_landmarks.dat"))
 predictor = dlib.shape_predictor(model_path)
 
-gaze = GazeTracking()
-mouth_track = MouthTracking()
-brow_tracker = BrowTracking()
 webcam = cv2.VideoCapture(0)
-
 frame_size = (
     webcam.get(cv2.CAP_PROP_FRAME_WIDTH),
     webcam.get(cv2.CAP_PROP_FRAME_HEIGHT)
 )
-# face_model_points = get_full_model_points(
-#     os.path.abspath(os.path.join(cwd, "training_data_NEW/model.txt"))
-# )
 
 while True:
     # We get a new frame from the webcam
@@ -46,63 +35,81 @@ while True:
 
     face = Face(frame, frame_size, landmarks)
     face.analyze()
-    frame = face.annotate(frame)
+    # frame = face.annotate(frame)
+    frame = face.draw_vecs(frame)
 
-    # We send this frame to GazeTracking to analyze it
-    # gaze.refresh(frame, landmarks)
-    # frame = gaze.annotated_frame(frame)
+    k = cv2.waitKey(1)
+    # if k == ord('p'):
+    #     pt = np.array([
+    #         [face.eyes[0].origin[0] + face.eyes[0].pupil.x],
+    #         [face.eyes[0].origin[1] + face.eyes[0].pupil.y],
+    #         [1]
+    #     ], dtype="double")
+    #     print(pt)
+    #     print(face.camera_specs.dimensions)
+    # try:
+    #     uvPoint1 = np.array([
+    #         [face.eyes[0].origin[0] + face.eyes[0].pupil.x],
+    #         [face.eyes[0].origin[1] + face.eyes[0].pupil.y],
+    #         [1]
+    #     ], dtype="double")
+    #     uvPoint2 = np.array([
+    #         [face.eyes[1].origin[0] + face.eyes[1].pupil.x],
+    #         [face.eyes[1].origin[1] + face.eyes[1].pupil.y],
+    #         [1]
+    #     ], dtype="double")
     #
-    # mouth_track.refresh(frame, landmarks)
-    # frame = mouth_track.annotated_frame(frame)
+    #     s, rot_mat, c_mat, t_vec = face.calculate_2d_to_3d_translation_matrix(
+    #         face.rotational_vector,
+    #         face.translation_vector
+    #     )
+    #     res1 = np.dot(
+    #         rot_mat,
+    #         np.dot(
+    #             np.dot(
+    #                 s,
+    #                 c_mat
+    #             ),
+    #             uvPoint1
+    #         ) - t_vec
+    #     )
+    #     res2 = np.dot(
+    #         rot_mat,
+    #         np.dot(
+    #             s*c_mat,
+    #             uvPoint2
+    #         ) - t_vec
+    #     )
+    #     # print(res1)
+    #     # print(res2)
+    #     point_3d = [res1, res2]
+    #     point_3d = np.array(point_3d, dtype=np.float32).reshape(-1, 3)
+    #     (point_2d, _) = cv2.projectPoints(point_3d,
+    #                                       face.rotational_vector,
+    #                                       face.translation_vector,
+    #                                       face.camera_specs.camera_matrix,
+    #                                       face.DIST_COEFFS)
+    #     point_2d = np.int32(point_2d.reshape(-1, 2))
     #
-    # brow_tracker.refresh(frame, landmarks)
-    # frame = brow_tracker.annotated_frame(frame)
-    #
-    # gaze_text = ""
-    # if gaze.is_blinking():
-    #     gaze_text = "Blinking"
-    # elif gaze.is_right():
-    #     gaze_text = "Looking right"
-    # elif gaze.is_left():
-    #     gaze_text = "Looking left"
-    # elif gaze.is_center():
-    #     gaze_text = "Looking center"
-    #
-    # mouth_text = ""
-    # if mouth_track.is_closed():
-    #     mouth_text = "mouth closed"
-    # elif mouth_track.is_half_open():
-    #     mouth_text = "mouth half open"
-    # elif mouth_track.is_full_open():
-    #     mouth_text = "mouth full open"
-    #
-    # brow_text = ""
-    # if brow_tracker.are_raised():
-    #     brow_text = "brow raised"
-    # elif brow_tracker.are_neutral():
-    #     brow_text = "brow neutral"
-    # elif brow_tracker.are_furrowed():
-    #     brow_text = "brow furrowed"
-    #
-    # cv2.putText(frame, gaze_text, (90, 60), cv2.FONT_HERSHEY_DUPLEX, 1.6, (147, 58, 31), 2)
-    # cv2.putText(frame, mouth_text, (90, 120), cv2.FONT_HERSHEY_DUPLEX, 1.6, (147, 58, 31), 2)
-    # cv2.putText(frame, brow_text, (90, 180), cv2.FONT_HERSHEY_DUPLEX, 1.6, (147, 58, 31), 2)
+    #     print("2D points: %s" % point_2d)
+    #     print("Frame size %s | %s" % (frame_size[0], frame_size[1]))
+    #     # Draw all the lines
+    #     frame = cv2.line(frame, tuple(point_2d[0]), tuple(
+    #         point_2d[1]), (0, 255, 0), 2, cv2.LINE_AA)
+    #     dist_part = np.sum((res1-res2)**2, axis=0)
+    #     # print(dist_part)
+    #     dist = np.sqrt(dist_part)
+    #     # print(
+    #     #     "rotations: %s | %s | %s | %s" % (s, res1, res2, dist)
+    #     # )
+    # except Exception as e:
+    #     print("passing eye trace...")
+    #     print(e)
 
-    # left_pupil = gaze.pupil_left_coords()
-    # right_pupil = gaze.pupil_right_coords()
-    # cv2.putText(frame, "Left pupil:  " + str(left_pupil), (90, 130), cv2.FONT_HERSHEY_DUPLEX, 0.9, (147, 58, 31), 1)
-    # cv2.putText(frame, "Right pupil: " + str(right_pupil), (90, 165), cv2.FONT_HERSHEY_DUPLEX, 0.9, (147, 58, 31), 1)
+    if k == 27:
+        break
 
     cv2.imshow("Demo", frame)
 
-    if cv2.waitKey(1) == 27:
-        print(
-            brow_tracker.right_brow.distance_from_nose
-        )
-        print(
-            brow_tracker.left_brow.distance_from_nose
-        )
-        break
-   
 webcam.release()
 cv2.destroyAllWindows()
