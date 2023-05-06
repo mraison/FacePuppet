@@ -1,6 +1,6 @@
 """
 Demonstration of the GazeTracking library.
-Check the README.md for complete documentation.
+Check the README.md for complete documentation
 """
 import cv2
 import os
