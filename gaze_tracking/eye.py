@@ -2,9 +2,10 @@ import math
 import numpy as np
 import cv2
 from .pupil import Pupil
+from .base import BaseFaceFeature
 
 
-class Eye(object):
+class Eye(BaseFaceFeature):
     """
     This class creates a new frame to isolate the eye and
     initiates the pupil detection.
@@ -14,6 +15,10 @@ class Eye(object):
     RIGHT_EYE_POINTS = [42, 43, 44, 45, 46, 47]
 
     def __init__(self, original_frame, landmarks, side, calibration, vect_calc, dimension_calc):
+        super().__init__(vect_calc, dimension_calc)
+        self._slope = -2 if side == 0 else 2
+        self.x_coeff = 1 if side == 0 else -1
+
         self.frame = None
         self.origin = None
         self.center = None
@@ -23,8 +28,6 @@ class Eye(object):
         self.landmarks = landmarks
         self.side = side
         self.calibration = calibration
-        self.vect_calc = vect_calc
-        self.dimension_calc = dimension_calc
 
     def is_located(self):
         return self.pupils_located
@@ -153,6 +156,7 @@ class Eye(object):
 
         threshold = calibration.threshold(side)
         self.pupil = Pupil(self.frame, threshold)
+        self.set_feature_reference_point(self.pupil_coords())
 
     def annotated_frame(self, frame):
         """Returns the main frame with pupils highlighted"""
@@ -163,20 +167,3 @@ class Eye(object):
             cv2.line(frame, (x, y - 5), (x, y + 5), color)
 
         return frame
-
-    def draw_vect(self, frame):
-        if self.pupils_located:
-            point = self.pupil_coords()
-            start, end, dist = self.vect_calc.find_vector(point)
-
-            point_2d = self.dimension_calc.to_2d([start, end])
-            # point_2d = np.int32(point_2d.reshape(-1, 2))
-            frame = cv2.line(
-                frame,
-                tuple(point_2d[0]),
-                tuple(point_2d[1]),
-                (0, 255, 0), 2, cv2.LINE_AA
-            )
-
-        return frame
-

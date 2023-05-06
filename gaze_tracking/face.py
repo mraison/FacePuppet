@@ -146,7 +146,7 @@ class Face(object):
             self.MODEL_POINTS, image_points, self.camera_specs.camera_matrix,
             self.DIST_COEFFS, rvec=self.camera_specs.r_vec, tvec=self.camera_specs.t_vec,
             flags=cv2.SOLVEPNP_ITERATIVE,
-            # useExtrinsicGuess = True
+            useExtrinsicGuess=False
         )
         self.rotational_vector = rotation_vector
         self.translation_vector = translation_vector

@@ -1,10 +1,9 @@
-import math
 import numpy as np
 import cv2
-from .pupil import Pupil
+from .base import BaseFaceFeature
 
 
-class EyeBrow(object):
+class EyeBrow(BaseFaceFeature):
     """
     This class creates a new frame to isolate the eye and
     initiates the pupil detection.
@@ -19,13 +18,15 @@ class EyeBrow(object):
     BRIDGE_OF_NOSE = [27]
 
     def __init__(self, landmarks, side, vect_calc, dimension_calc):
+        super().__init__(vect_calc, dimension_calc)
+        self._slope = -1 if side == 0 else 1
+        self.x_coeff = 1 if side == 0 else -1
+
         self.distance_from_nose = None
         self.position = None
 
         self.landmarks = landmarks
         self.side = side
-        self.vect_calc = vect_calc
-        self.dimension_calc = dimension_calc
 
     def is_located(self):
         return self.position is not None
@@ -81,6 +82,7 @@ class EyeBrow(object):
             return
 
         self.position = self._position(landmarks, points, eyelid)
+        self.set_feature_reference_point(self.position)
 
     def annotated_frame(self, frame):
         """Returns the main frame with pupils highlighted"""
@@ -90,21 +92,5 @@ class EyeBrow(object):
             color = (255, 0, 0)
             point = self.position
             cv2.line(frame, (point[0] - 10, point[1]), (point[0] + 10, point[1]), color)
-
-        return frame
-
-    def draw_vect(self, frame):
-        if self.position:
-            point = self.position
-            start, end, dist = self.vect_calc.find_vector(point)
-
-            point_2d = self.dimension_calc.to_2d([start, end])
-            # point_2d = np.int32(point_2d.reshape(-1, 2))
-            frame = cv2.line(
-                frame,
-                tuple(point_2d[0]),
-                tuple(point_2d[1]),
-                (0, 255, 0), 2, cv2.LINE_AA
-            )
 
         return frame

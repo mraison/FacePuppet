@@ -78,6 +78,16 @@ class ThreeDimensionalCalc():
         point_2d = np.int32(point_2d.reshape(-1, 2))
         return point_2d
 
+    def to_flattened_2d(self, points):
+        point_3d = np.array(points, dtype=np.float32).reshape(-1, 3)
+        (point_2d, _) = cv2.projectPoints(point_3d,
+                                          self.rotation_vec,
+                                          [0,0,0],
+                                          self.camera_matrix,
+                                          self.DIST_COEFFS)
+        point_2d = np.int32(point_2d.reshape(-1, 2))
+        return point_2d
+
     def find_distance(self, point1, point2):
         dist_part = np.sum((point1 - point2) ** 2, axis=0)
         return np.sqrt(dist_part)

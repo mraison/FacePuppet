@@ -1,9 +1,9 @@
-import math
 import numpy as np
 import cv2
+from .base import BaseFaceFeature
 
 
-class Mouth(object):
+class Mouth(BaseFaceFeature):
     """
     This class creates a new frame to isolate the eye and
     initiates the pupil detection.
@@ -15,10 +15,9 @@ class Mouth(object):
     BOTTOM_LIP_OUTER_POINTS = [48, 59, 58, 57, 56, 55, 54]
 
     def __init__(self, landmarks, vect_calc, dimension_calc):
+        super().__init__(vect_calc, dimension_calc)
         self.mouth_shape = None
         self.landmark_points = landmarks
-        self.vect_calc = vect_calc
-        self.dimension_calc = dimension_calc
         self.mouth_center_location = None
 
     def is_located(self):
@@ -58,7 +57,7 @@ class Mouth(object):
         y = int((p1[1] + p2[1]) / 2)
         return (x, y)
 
-    def _mouth_shape(self, landmarks, upper_lip, lower_lip):
+    def _analyze(self, landmarks, upper_lip, lower_lip):
         ## take the center 3 points of the upper and lower lips
         # assume ordered left to write.
         x_top_l = [landmarks.part(i).x for i in upper_lip]
@@ -72,19 +71,16 @@ class Mouth(object):
         lip_gap_width = np.mean([np.absolute(x_top_l[-1] - x_top_l[0]), np.absolute(x_bottom_l[-1] - x_bottom_l[0])])
 
         self.mouth_center_location = self._middle_point(av_top_lip, av_bottom_lip)
-
-        return (lip_gap_width, lip_gap_height)
+        self.mouth_shape = (lip_gap_width, lip_gap_height)
+        self.set_feature_reference_point(self.mouth_center_location)
 
     def analyze(self):
         if self.landmark_points is None:
             self.mouth_shape = None
             self.mouth_center_location = None
             return
-        self._analyze(self.landmark_points)
-
-    def _analyze(self, landmarks):
-        self.mouth_shape = self._mouth_shape(
-            landmarks,
+        self._analyze(
+            self.landmark_points,
             self.TOP_LIP_INNER_POINTS,
             self.BOTTOM_LIP_INNER_POINTS
         )
@@ -102,22 +98,6 @@ class Mouth(object):
                 (int(x_left-x_size/2), int(y_left-y_size/2)),
                 (int(x_left+x_size/2), int(y_left+y_size/2)),
                 color
-            )
-
-        return frame
-
-    def draw_vect(self, frame):
-        if self.mouth_center_location:
-            point = self.mouth_center_location
-            start, end, dist = self.vect_calc.find_vector(point)
-
-            point_2d = self.dimension_calc.to_2d([start, end])
-            # point_2d = np.int32(point_2d.reshape(-1, 2))
-            frame = cv2.line(
-                frame,
-                tuple(point_2d[0]),
-                tuple(point_2d[1]),
-                (0, 255, 0), 2, cv2.LINE_AA
             )
 
         return frame

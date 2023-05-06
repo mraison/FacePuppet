@@ -18,7 +18,7 @@ frame_size = (
     webcam.get(cv2.CAP_PROP_FRAME_WIDTH),
     webcam.get(cv2.CAP_PROP_FRAME_HEIGHT)
 )
-
+prev_landmarks=None
 while True:
     # We get a new frame from the webcam
     _, frame = webcam.read()
@@ -33,83 +33,35 @@ while True:
     except:
         landmarks = None
 
+    use_prev = True
+    if landmarks and prev_landmarks:
+        neighborhood = 10
+        for i in Face.FEATURE_IDS_FOR_HEAD_TILT:
+            hypot = (
+                (landmarks.part(i).x - prev_landmarks.part(i).x) ** 2
+                + (landmarks.part(i).y - prev_landmarks.part(i).y) ** 2
+            ) ** (1 / 2)
+            if abs(hypot) - neighborhood > 0:
+                use_prev = False
+
+        if use_prev:
+            landmarks = prev_landmarks
+            for i in range(67):
+                prev_landmarks.part(i).x = (landmarks.part(i).x + prev_landmarks.part(i).x)/2
+                prev_landmarks.part(i).y = (landmarks.part(i).y + prev_landmarks.part(i).y)/2
+
     face = Face(frame, frame_size, landmarks)
     face.analyze()
-    # frame = face.annotate(frame)
+    frame = face.annotate(frame)
     frame = face.draw_vecs(frame)
 
     k = cv2.waitKey(1)
-    # if k == ord('p'):
-    #     pt = np.array([
-    #         [face.eyes[0].origin[0] + face.eyes[0].pupil.x],
-    #         [face.eyes[0].origin[1] + face.eyes[0].pupil.y],
-    #         [1]
-    #     ], dtype="double")
-    #     print(pt)
-    #     print(face.camera_specs.dimensions)
-    # try:
-    #     uvPoint1 = np.array([
-    #         [face.eyes[0].origin[0] + face.eyes[0].pupil.x],
-    #         [face.eyes[0].origin[1] + face.eyes[0].pupil.y],
-    #         [1]
-    #     ], dtype="double")
-    #     uvPoint2 = np.array([
-    #         [face.eyes[1].origin[0] + face.eyes[1].pupil.x],
-    #         [face.eyes[1].origin[1] + face.eyes[1].pupil.y],
-    #         [1]
-    #     ], dtype="double")
-    #
-    #     s, rot_mat, c_mat, t_vec = face.calculate_2d_to_3d_translation_matrix(
-    #         face.rotational_vector,
-    #         face.translation_vector
-    #     )
-    #     res1 = np.dot(
-    #         rot_mat,
-    #         np.dot(
-    #             np.dot(
-    #                 s,
-    #                 c_mat
-    #             ),
-    #             uvPoint1
-    #         ) - t_vec
-    #     )
-    #     res2 = np.dot(
-    #         rot_mat,
-    #         np.dot(
-    #             s*c_mat,
-    #             uvPoint2
-    #         ) - t_vec
-    #     )
-    #     # print(res1)
-    #     # print(res2)
-    #     point_3d = [res1, res2]
-    #     point_3d = np.array(point_3d, dtype=np.float32).reshape(-1, 3)
-    #     (point_2d, _) = cv2.projectPoints(point_3d,
-    #                                       face.rotational_vector,
-    #                                       face.translation_vector,
-    #                                       face.camera_specs.camera_matrix,
-    #                                       face.DIST_COEFFS)
-    #     point_2d = np.int32(point_2d.reshape(-1, 2))
-    #
-    #     print("2D points: %s" % point_2d)
-    #     print("Frame size %s | %s" % (frame_size[0], frame_size[1]))
-    #     # Draw all the lines
-    #     frame = cv2.line(frame, tuple(point_2d[0]), tuple(
-    #         point_2d[1]), (0, 255, 0), 2, cv2.LINE_AA)
-    #     dist_part = np.sum((res1-res2)**2, axis=0)
-    #     # print(dist_part)
-    #     dist = np.sqrt(dist_part)
-    #     # print(
-    #     #     "rotations: %s | %s | %s | %s" % (s, res1, res2, dist)
-    #     # )
-    # except Exception as e:
-    #     print("passing eye trace...")
-    #     print(e)
-
     if k == 27:
         break
 
     cv2.imshow("Demo", frame)
+    if not use_prev:
+        prev_landmarks = landmarks
 
 webcam.release()
 cv2.destroyAllWindows()
